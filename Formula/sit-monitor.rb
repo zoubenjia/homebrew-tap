@@ -9,6 +9,9 @@ class SitMonitor < Formula
   depends_on "python@3.12"
   depends_on :macos
 
+  # mediapipe 预编译 wheel 的 dylib header 空间不足，跳过 linkage 修复
+  skip_clean "libexec"
+
   def install
     # 创建 Python 虚拟环境并安装包（含所有依赖）
     virtualenv_create(libexec, "python3.12")
