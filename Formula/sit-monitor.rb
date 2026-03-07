@@ -1,59 +1,59 @@
 class SitMonitor < Formula
+  include Language::Python::Virtualenv
+
   desc "Posture monitor using MacBook camera with MediaPipe Pose detection"
   homepage "https://github.com/zoubenjia/sit-position"
-  url "https://github.com/zoubenjia/sit-position.git", branch: "main"
-  version "1.1.0"
+  url "https://github.com/zoubenjia/sit-position.git", tag: "v1.2.0"
   license "MIT"
 
   depends_on "python@3.12"
-  depends_on "uv"
   depends_on :macos
 
   def install
-    # 创建虚拟环境并安装依赖
-    venv = libexec/"venv"
-    system "uv", "venv", "--python", "python3.12", venv.to_s
-    system "uv", "pip", "install", "--python", "#{venv}/bin/python",
-           "-r", "requirements.txt"
+    # 创建 Python 虚拟环境并安装包
+    venv = virtualenv_create(libexec, "python3.12")
+    venv.pip_install buildpath
 
-    # 下载模型文件
-    model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
-    system "curl", "-sSL", "-o", "pose_landmarker_lite.task", model_url
+    # 下载 ML 模型文件
+    data_dir = libexec/"share"/"sit-monitor"
+    data_dir.mkpath
+    system "curl", "-sSL", "-o", data_dir/"pose_landmarker_lite.task",
+           "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
+    system "curl", "-sSL", "-o", data_dir/"face_landmarker.task",
+           "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task"
 
-    # 安装项目文件
-    libexec.install Dir["*"]
-
-    # 创建启动脚本
-    (bin/"sit-monitor").write <<~EOS
+    # 创建带环境变量的启动脚本
+    (bin/"sit-monitor").write <<~SH
       #!/bin/bash
-      exec "#{libexec}/venv/bin/python" "#{libexec}/sit_monitor.py" "$@"
-    EOS
-
-    # 创建服务管理脚本
-    (bin/"sit-monitor-service").write <<~EOS
-      #!/bin/bash
-      exec bash "#{libexec}/service.sh" "$@"
-    EOS
+      export SITMONITOR_DATA_DIR="#{data_dir}"
+      exec "#{libexec}/bin/sit-monitor" "$@"
+    SH
   end
 
   def caveats
     <<~EOS
       Usage:
-        sit-monitor --tray           # System tray mode
-        sit-monitor --debug          # Debug mode (show camera)
-        sit-monitor --auto-pause     # CLI mode
+        sit-monitor --tray           # Menu bar mode (recommended)
+        sit-monitor --debug          # Debug mode (show camera window)
+        sit-monitor                  # CLI mode
 
-      Service management:
-        sit-monitor-service start    # Start background service
-        sit-monitor-service install  # Install LaunchAgent (auto-start on login)
-        sit-monitor-service stop     # Stop service
+      First run:
+        Camera access permission is required.
+        Go to System Settings > Privacy & Security > Camera to grant access.
 
-      Note: Camera access permission is required.
-      Go to System Settings > Privacy & Security > Camera to grant access.
+      Auto-start on login:
+        brew services start sit-monitor
     EOS
   end
 
+  service do
+    run [opt_bin/"sit-monitor", "--tray"]
+    keep_alive true
+    log_path var/"log/sit-monitor.log"
+    error_log_path var/"log/sit-monitor-error.log"
+  end
+
   test do
-    system "#{bin}/sit-monitor", "--help"
+    assert_match "坐姿监控", shell_output("#{bin}/sit-monitor --help 2>&1", 0)
   end
 end
