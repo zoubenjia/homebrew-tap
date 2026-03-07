@@ -12,7 +12,7 @@ class SitMonitor < Formula
   def install
     # 创建 Python 虚拟环境并安装包（含所有依赖）
     virtualenv_create(libexec, "python3.12")
-    system libexec/"bin"/"pip", "install", "--no-cache-dir", buildpath
+    system libexec/"bin"/"python", "-m", "pip", "install", "--no-cache-dir", buildpath
 
     # 下载 ML 模型文件
     data_dir = libexec/"share"/"sit-monitor"
