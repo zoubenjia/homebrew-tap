@@ -3,7 +3,7 @@ class SitMonitor < Formula
 
   desc "Posture monitor using MacBook camera with MediaPipe Pose detection"
   homepage "https://github.com/zoubenjia/sit-position"
-  url "https://github.com/zoubenjia/sit-position.git", tag: "v1.2.0"
+  url "https://github.com/zoubenjia/sit-position.git", tag: "v1.5.0"
   license "MIT"
 
   depends_on "python@3.12"
