@@ -3,7 +3,7 @@ class SitMonitor < Formula
 
   desc "Posture monitor using MacBook camera with MediaPipe Pose detection"
   homepage "https://github.com/zoubenjia/sit-position"
-  url "https://github.com/zoubenjia/sit-position.git", tag: "v1.5.1"
+  url "https://github.com/zoubenjia/sit-position.git", tag: "v1.5.2"
   license "MIT"
 
   depends_on "python@3.12"
@@ -16,6 +16,12 @@ class SitMonitor < Formula
     # 创建 Python 虚拟环境并安装包（含所有依赖）
     virtualenv_create(libexec, "python3.12")
     system libexec/"bin"/"python", "-m", "pip", "install", "--no-cache-dir", buildpath
+
+    # 强制把 certifi 装进 venv：mediapipe>=0.10.35 运行时调 certifi.where()，
+    # 而部分机器全局 site-packages 的 certifi 是损坏的空目录（只剩 dist-info），
+    # 普通 pip 会误判“已安装”而不装到 venv，导致姿势检测线程启动即崩。
+    system libexec/"bin"/"python", "-m", "pip", "install",
+           "--ignore-installed", "--no-cache-dir", "certifi"
 
     # 下载 ML 模型文件
     data_dir = libexec/"share"/"sit-monitor"
