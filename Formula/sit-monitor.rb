@@ -46,10 +46,26 @@ class SitMonitor < Formula
     system "curl", "-sSL", "-o", data_dir/"face_landmarker.task",
            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task"
 
+    # 把模型复制到用户标准数据目录（wrapper 会把 SITMONITOR_DATA_DIR 指到那里）
+    (bin/"sit-monitor-setup-data").write <<~SH
+      #!/bin/bash
+      D="${SITMONITOR_DATA_DIR:-$HOME/Library/Application Support/SitMonitor}"
+      mkdir -p "$D"
+      for f in pose_landmarker_lite.task face_landmarker.task; do
+        [ -f "$D/$f" ] || cp "#{data_dir}/$f" "$D/$f"
+      done
+    SH
+    chmod 0755, bin/"sit-monitor-setup-data"
+
     # 创建带环境变量的启动脚本
     (bin/"sit-monitor").write <<~SH
       #!/bin/bash
-      export SITMONITOR_DATA_DIR="#{data_dir}"
+      # 数据目录默认放用户标准位置，不放 Cellar：
+      # Cellar 里的数据会被 brew cleanup 在升级/重装时连同历史一起删掉
+      # （2026-09-08 实际丢过一次，靠 APFS 本地快照才救回）。
+      # 模型文件也在此目录下，安装时会一并复制过去。
+      export SITMONITOR_DATA_DIR="${SITMONITOR_DATA_DIR:-$HOME/Library/Application Support/SitMonitor}"
+      "#{bin}/sit-monitor-setup-data"
       exec "#{libexec}/bin/sit-monitor" "$@"
     SH
 
