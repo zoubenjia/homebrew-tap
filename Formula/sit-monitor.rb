@@ -12,6 +12,21 @@ class SitMonitor < Formula
   # mediapipe 预编译 wheel 的 dylib header 空间不足，跳过 linkage 修复
   skip_clean "libexec"
 
+  # Homebrew 安装后会对 wheel 里的 .dylib 做 relocation（改 install_name/rpath），
+  # 这会破坏它们原有的 adhoc 代码签名 → macOS AMFI 拒绝加载 →
+  #   amfid: "not valid ... adhoc signed or signed by an unknown certificate chain"
+  # 进程一 import 就被 SIGKILL，表现为菜单栏程序反复闪退（launchctl status=-9）。
+  #
+  # 实测确认（2026-09-08）：主 cv2.abi3.so 未被改动，但 cv2/.dylibs/ 下约 97 个
+  # 依赖库全部被改写；只重签主 .so 无效，必须重签全部。
+  # post_install 跑在 brew 的后处理之后，是唯一不会被再次覆盖的时机
+  # （写在 install 里会被后处理推翻，已验证无效）。
+  def post_install
+    Dir.glob(libexec/"lib/python3.12/site-packages/**/*.{dylib,so}").each do |f|
+      system "/usr/bin/codesign", "--force", "--sign", "-", f
+    end
+  end
+
   def install
     # 创建 Python 虚拟环境并安装包（含所有依赖）
     virtualenv_create(libexec, "python3.12")
@@ -23,20 +38,7 @@ class SitMonitor < Formula
     system libexec/"bin"/"python", "-m", "pip", "install",
            "--ignore-installed", "--no-cache-dir", "certifi"
 
-    # ★ 必须最后用 pip 覆盖重装这些含二进制的包。
-    # Homebrew 的安装流程会改写 wheel 里的 .so/.dylib（同版本文件在 Cellar 与
-    # 普通 venv 里 sha256 不同），改写后 macOS 的 AMFI 拒绝加载：
-    #   amfid: "not valid ... adhoc signed or signed by an unknown certificate chain"
-    # 加载即 SIGKILL —— 表现为菜单栏程序反复闪退、launchctl status=-9。
-    # 实测（2026-09-08）：钉版本、重新 codesign 都无效，只有用 pip 覆盖装回
-    # 原始 wheel 内容才能正常加载。
-    # ★ 必须用 --ignore-installed 而非 --force-reinstall：brew 装完会删掉
-    # wheel 的 RECORD 文件，pip 卸载时报 "uninstall-no-record-file" 直接失败，
-    # 覆盖等于没做（第一版 formula 就栽在这里）。--no-deps 避免连带升级。
-    system libexec/"bin"/"python", "-m", "pip", "install",
-           "--ignore-installed", "--no-deps", "--no-cache-dir",
-           "opencv-python==4.13.0.92", "Pillow==12.1.1",
-           "numpy==2.4.2", "mediapipe==0.10.32"
+
 
     # 下载 ML 模型文件
     data_dir = libexec/"share"/"sit-monitor"
