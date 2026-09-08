@@ -29,9 +29,12 @@ class SitMonitor < Formula
     #   amfid: "not valid ... adhoc signed or signed by an unknown certificate chain"
     # 加载即 SIGKILL —— 表现为菜单栏程序反复闪退、launchctl status=-9。
     # 实测（2026-09-08）：钉版本、重新 codesign 都无效，只有用 pip 覆盖装回
-    # 原始 wheel 内容才能正常加载。--no-deps 避免连带升级其它依赖。
+    # 原始 wheel 内容才能正常加载。
+    # ★ 必须用 --ignore-installed 而非 --force-reinstall：brew 装完会删掉
+    # wheel 的 RECORD 文件，pip 卸载时报 "uninstall-no-record-file" 直接失败，
+    # 覆盖等于没做（第一版 formula 就栽在这里）。--no-deps 避免连带升级。
     system libexec/"bin"/"python", "-m", "pip", "install",
-           "--force-reinstall", "--no-deps", "--no-cache-dir",
+           "--ignore-installed", "--no-deps", "--no-cache-dir",
            "opencv-python==4.13.0.92", "Pillow==12.1.1",
            "numpy==2.4.2", "mediapipe==0.10.32"
 
