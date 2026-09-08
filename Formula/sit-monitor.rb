@@ -23,6 +23,18 @@ class SitMonitor < Formula
     system libexec/"bin"/"python", "-m", "pip", "install",
            "--ignore-installed", "--no-cache-dir", "certifi"
 
+    # ★ 必须最后用 pip 覆盖重装这些含二进制的包。
+    # Homebrew 的安装流程会改写 wheel 里的 .so/.dylib（同版本文件在 Cellar 与
+    # 普通 venv 里 sha256 不同），改写后 macOS 的 AMFI 拒绝加载：
+    #   amfid: "not valid ... adhoc signed or signed by an unknown certificate chain"
+    # 加载即 SIGKILL —— 表现为菜单栏程序反复闪退、launchctl status=-9。
+    # 实测（2026-09-08）：钉版本、重新 codesign 都无效，只有用 pip 覆盖装回
+    # 原始 wheel 内容才能正常加载。--no-deps 避免连带升级其它依赖。
+    system libexec/"bin"/"python", "-m", "pip", "install",
+           "--force-reinstall", "--no-deps", "--no-cache-dir",
+           "opencv-python==4.13.0.92", "Pillow==12.1.1",
+           "numpy==2.4.2", "mediapipe==0.10.32"
+
     # 下载 ML 模型文件
     data_dir = libexec/"share"/"sit-monitor"
     data_dir.mkpath
