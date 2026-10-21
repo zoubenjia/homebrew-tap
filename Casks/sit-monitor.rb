@@ -1,6 +1,6 @@
 cask "sit-monitor" do
   version "1.5.8"
-  sha256 "dcbaf4d861882fb75930c95096b9e12aca576d744c4fa230542bc4d078d4bb15"
+  sha256 "ccfc7a6f9f5c85cf111dd0eaea5f8f0e9175d0f81e4e27041fa899c2d00fda10"
 
   url "https://github.com/zoubenjia/sit-position/releases/download/v#{version}/SitMonitor-macOS.dmg"
   name "Sit Monitor"
