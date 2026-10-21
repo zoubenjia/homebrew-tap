@@ -32,12 +32,16 @@ cask "sit-monitor" do
   ]
 
   caveats <<~EOS
-    安装必须带 --no-quarantine：
+    本包用 Developer ID 签名但**未公证**（Apple 开发者协议过期，notarytool 返回 403）。
+    Homebrew 会无条件给下载的包打上隔离属性，Gatekeeper 随后会拒绝启动未公证的包。
+    （Homebrew 7 起已移除 --no-quarantine 选项，传它会报 invalid option。）
 
-      brew install --cask --no-quarantine zoubenjia/tap/sit-monitor
+    安装后执行一次：
 
-    本包用 Developer ID 签名但**未公证**（Apple 开发者协议过期，notarytool 返回
-    403）。不加该参数，Gatekeeper 会拒绝启动从网络下载的未公证包。
+      xattr -dr com.apple.quarantine /Applications/SitMonitor.app
+
+    只需做这一次。此后 brew upgrade --cask 会延续"未隔离"状态并校验签名身份未变，
+    不会再要求重做（见 Homebrew 的 cask/upgrade.rb quarantine_release_decision）。
 
     首次运行需授权摄像头：系统设置 > 隐私与安全性 > 摄像头。
     开机自启在托盘菜单里开启（进阶模式 > 开机自启）。
